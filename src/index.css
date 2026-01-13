@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Fonts */
+
+/* Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Noto Sans Thai", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Neo-brutalism Custom Utilities */
+@layer utilities {
+  .neo-shadow-sm {
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .neo-shadow-md {
+    box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .neo-shadow-lg {
+    box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
+  }
+
+  .neo-shadow-xl {
+    box-shadow: 12px 12px 0px 0px rgba(0, 0, 0, 1);
+  }
+}
+
+/* Custom Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-left: 3px solid #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border: 2px solid #000;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
