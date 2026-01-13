@@ -148,7 +148,7 @@ export const HomePage = () => {
             {loading && (
               <div className="text-center text-white text-xl font-bold flex flex-col items-center gap-4">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
-                <p>⏳ กำลังโหลดข้อมูลจาก Supabase...</p>
+                <p>⏳ กำลังโหลดข้อมูล...</p>
                 {!import.meta.env.VITE_SUPABASE_URL && (
                   <div className="mt-8 bg-black/80 p-6 rounded-lg border-4 border-red-500 max-w-lg text-left">
                     <p className="text-red-400 font-bold text-xl mb-4">
@@ -199,7 +199,7 @@ export const HomePage = () => {
               <div className="bg-yellow-200 border-4 border-black rounded-lg p-6 text-center">
                 <p className="text-2xl font-black mb-2">📭 ไม่มีข้อมูล</p>
                 <p className="font-bold">ยังไม่มีหมวดหมู่ในระบบ</p>
-                <p className="text-sm mt-2">กรุณา Insert ข้อมูลใน Supabase</p>
+                <p className="text-sm mt-2">กรุณา Insert ข้อมูล</p>
               </div>
             )}
 
