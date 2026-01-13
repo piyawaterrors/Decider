@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CategoryCard } from "../components/CategoryCard";
 import { DecisionResult } from "../components/DecisionResult";
 import { DonationModal } from "../components/DonationModal";
-import { useCategories } from "../hooks/useSupabaseData";
+import { useCategories, useSettings } from "../hooks/useSupabaseData";
 import { useDecision } from "../hooks/useDecision";
+import { useAuth } from "../hooks/useAuth";
 import { dbService } from "../services/dbService";
 import { getEmojiFromIcon, getColorFromIcon } from "../data/categories";
 
@@ -14,12 +16,24 @@ import { getEmojiFromIcon, getColorFromIcon } from "../data/categories";
  * Uses ONLY Supabase data (no fallback)
  */
 export const HomePage = () => {
+  const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
   const { data: categories, loading, error } = useCategories();
+  const { data: allSettings } = useSettings();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [decisions, setDecisions] = useState([]);
   const [decisionsLoading, setDecisionsLoading] = useState(false);
   const [decisionsError, setDecisionsError] = useState(null);
   const [showDonationModal, setShowDonationModal] = useState(false);
+
+  // Determine if donation is enabled from settings
+  const donationEnabledSetting = allSettings?.find(
+    (s) => s.key === "donation_enabled"
+  );
+  const isDonationEnabled = donationEnabledSetting
+    ? donationEnabledSetting.value === true ||
+      donationEnabledSetting.value === "true"
+    : true; // Default to true if not found
 
   const {
     clickCount,
@@ -29,7 +43,7 @@ export const HomePage = () => {
     makeDecision,
     reset,
     unlock,
-  } = useDecision();
+  } = useDecision({ isDonationEnabled });
 
   const handleCategorySelect = async (category) => {
     setSelectedCategory(category);
@@ -90,8 +104,32 @@ export const HomePage = () => {
         <motion.header
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="text-center mb-12"
+          className="text-center mb-12 relative"
         >
+          {/* Admin Button - Fixed at top-right for best accessibility and ensured to stay in front */}
+          {user && isAdmin && (
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/admin")}
+              className="
+                fixed top-4 right-4 md:top-8 md:right-8 z-50
+                bg-purple-600 text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg
+                border-4 border-black
+                shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+                hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]
+                transition-all duration-200
+                flex items-center gap-2
+              "
+            >
+              <span className="text-xl">⚙️</span>
+              <span className="hidden sm:inline">จัดการระบบ</span>
+              <span className="sm:hidden text-xs">Admin</span>
+            </motion.button>
+          )}
+
           <h1 className="text-5xl md:text-7xl font-black text-white mb-4 drop-shadow-lg">
             🎲 The Divine Decider
           </h1>
@@ -108,25 +146,52 @@ export const HomePage = () => {
             transition={{ delay: 0.2 }}
           >
             {loading && (
-              <div className="text-center text-white text-xl font-bold">
-                ⏳ กำลังโหลดข้อมูลจาก Supabase...
+              <div className="text-center text-white text-xl font-bold flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
+                <p>⏳ กำลังโหลดข้อมูลจาก Supabase...</p>
+                {!import.meta.env.VITE_SUPABASE_URL && (
+                  <div className="mt-8 bg-black/80 p-6 rounded-lg border-4 border-red-500 max-w-lg text-left">
+                    <p className="text-red-400 font-bold text-xl mb-4">
+                      🚨 ตรวจพบการตั้งค่าไม่สมบูรณ์
+                    </p>
+                    <p className="text-white mb-2">
+                      คุณกำลัง Deploy บน Vercel ใช่ไหม? กรุณา:
+                    </p>
+                    <ul className="list-disc list-inside text-gray-300 space-y-1 text-sm">
+                      <li>ไปที่ Vercel Dashboard &gt; Settings</li>
+                      <li>
+                        เพิ่ม{" "}
+                        <code className="text-yellow-400">
+                          VITE_SUPABASE_URL
+                        </code>
+                      </li>
+                      <li>
+                        เพิ่ม{" "}
+                        <code className="text-yellow-400">
+                          VITE_SUPABASE_ANON_KEY
+                        </code>
+                      </li>
+                      <li>
+                        จากนั้นกด <b>Redeploy</b> อีกครั้ง
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
             {error && (
-              <div className="bg-red-500 border-4 border-black rounded-lg p-6 mb-6 text-white text-center">
+              <div className="bg-red-500 border-4 border-black rounded-lg p-6 mb-6 text-white text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 <p className="text-2xl font-black mb-2">⚠️ เกิดข้อผิดพลาด</p>
                 <p className="font-bold mb-4">
-                  ไม่สามารถเชื่อมต่อ Supabase ได้
+                  {error.message || "ไม่สามารถเชื่อมต่อ Supabase ได้"}
                 </p>
-                <p className="text-sm">กรุณาตรวจสอบ:</p>
-                <ul className="text-sm text-left mt-2 space-y-1">
-                  <li>
-                    • ไฟล์ .env มี VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY
-                  </li>
-                  <li>• Restart dev server หลังแก้ .env</li>
-                  <li>• RLS Policies อนุญาตให้อ่านข้อมูล</li>
-                </ul>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-white text-black font-bold py-2 px-6 rounded-lg border-2 border-black hover:bg-gray-100 transition-colors"
+                >
+                  🔄 ลองใหม่อีกครั้ง
+                </button>
               </div>
             )}
 
@@ -173,12 +238,17 @@ export const HomePage = () => {
             </button>
 
             {/* Category Header */}
-            <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-lg p-6 mb-8 text-center">
+            <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-lg p-6 mb-8 text-center relative overflow-hidden">
+              {/* Spin Counter Tag */}
+              <div className="absolute top-4 right-4 bg-yellow-400 border-2 border-black font-black py-1 px-3 rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-sm">
+                ครั้งที่ {clickCount}
+              </div>
+
               <div className="text-6xl mb-2">
                 {getEmojiFromIcon(selectedCategory.icon_name)}
               </div>
               <h2 className="text-3xl font-black">{selectedCategory.title}</h2>
-              <p className="text-gray-600 font-semibold">
+              <p className="text-gray-600 font-semibold mb-2">
                 {selectedCategory.description}
               </p>
             </div>
@@ -233,9 +303,6 @@ export const HomePage = () => {
                   >
                     {isLocked ? "🔒 ล็อกแล้ว" : "🎲 สุ่มเลย!"}
                   </motion.button>
-                  <p className="mt-4 text-white font-bold text-lg">
-                    สุ่มไปแล้ว: {clickCount} ครั้ง
-                  </p>
                 </div>
               )}
 
@@ -246,29 +313,31 @@ export const HomePage = () => {
                 contextMessage={contextMessage}
                 onReroll={handleMakeDecision}
                 isLocked={isLocked}
-                onDonate={handleDonateClick}
+                onDonate={isDonationEnabled ? handleDonateClick : null}
               />
             )}
           </motion.div>
         )}
 
         {/* Donation Button (Floating) */}
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={handleDonateClick}
-          className="
-            fixed bottom-8 right-8
-            bg-yellow-400 text-black font-bold py-4 px-6 rounded-full
-            border-4 border-black
-            shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]
-            hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
-            transition-all duration-200
-            z-30
-          "
-        >
-          ☕ เลี้ยงกาแฟ
-        </motion.button>
+        {isDonationEnabled && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleDonateClick}
+            className="
+              fixed bottom-8 right-8
+              bg-yellow-400 text-black font-bold py-4 px-6 rounded-full
+              border-4 border-black
+              shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]
+              hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
+              transition-all duration-200
+              z-30
+            "
+          >
+            ☕ เลี้ยงกาแฟ
+          </motion.button>
+        )}
 
         {/* Donation Modal */}
         <DonationModal

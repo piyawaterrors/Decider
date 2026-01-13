@@ -12,6 +12,13 @@ export const dbService = {
    */
   async getCategories() {
     try {
+      // 🚨 ตรวจสอบการตั้งค่าก่อน
+      if (!supabase?.auth) {
+        throw new Error(
+          "Supabase client is not initialized. Please check your .env variables."
+        );
+      }
+
       console.log("🔍 Fetching categories from Supabase...");
 
       const { data, error } = await supabase
@@ -30,7 +37,7 @@ export const dbService = {
       return { data, error: null };
     } catch (error) {
       console.error("❌ Get categories error:", error);
-      return { data: null, error };
+      return { data: null, error: error.message || error };
     }
   },
 

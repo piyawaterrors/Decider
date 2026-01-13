@@ -1,116 +1,100 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { authService } from "../services/authService";
 
 /**
  * Custom hook for authentication state management
- * @returns {Object} - { user, session, loading, isAdmin, signIn, signUp, signOut }
+ * Robust version that handles F5 refreshes and prevents infinite loading
  */
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const initializationTimeout = useRef(null);
 
   useEffect(() => {
-    // Get initial session
-    const initAuth = async () => {
+    let isMounted = true;
+
+    const checkInitialAuth = async () => {
       try {
-        console.log("🔐 Initializing auth...");
+        console.log("🔐 Checking Initial Auth...");
 
-        const { session, error } = await authService.getSession();
+        // 1. Get session immediately from storage
+        const { session: currentSession } = await authService.getSession();
 
-        if (error) {
-          console.error("❌ Session error:", error);
-          setLoading(false);
-          return;
-        }
+        if (isMounted) {
+          setSession(currentSession);
+          setUser(currentSession?.user || null);
 
-        console.log("📝 Session:", session ? "Found" : "Not found");
-        setSession(session);
-        setUser(session?.user || null);
-
-        if (session?.user) {
-          console.log("👤 User found, checking admin status...");
-
-          try {
+          if (currentSession?.user) {
+            console.log("👤 User found, verifying admin role...");
             const adminStatus = await authService.isAdmin();
-            console.log("🔑 Admin status:", adminStatus);
-            setIsAdmin(adminStatus);
-          } catch (adminError) {
-            console.error("❌ Admin check error:", adminError);
-            setIsAdmin(false);
+            if (isMounted) setIsAdmin(adminStatus);
           }
-        } else {
-          console.log("👤 No user found");
-          setIsAdmin(false);
         }
       } catch (error) {
-        console.error("❌ Auth initialization error:", error);
+        console.error("❌ Auth Init Error:", error);
       } finally {
-        console.log("✅ Auth initialization complete");
-        setLoading(false);
+        if (isMounted) {
+          console.log("✅ Auth Loading Finished");
+          setLoading(false);
+          if (initializationTimeout.current)
+            clearTimeout(initializationTimeout.current);
+        }
       }
     };
 
-    initAuth();
+    // Safety fallback: If it takes more than 7 seconds, stop loading anyway
+    initializationTimeout.current = setTimeout(() => {
+      if (loading && isMounted) {
+        console.warn(
+          "⚠️ Auth initialization taking too long, forcing load complete"
+        );
+        setLoading(false);
+      }
+    }, 7000);
 
-    // Listen for auth changes
+    checkInitialAuth();
+
+    // Listen for future changes
     const {
       data: { subscription },
-    } = authService.onAuthStateChange(async (event, session) => {
-      console.log("🔄 Auth state changed:", event);
+    } = authService.onAuthStateChange(async (event, currentSession) => {
+      console.log(`🔄 Auth Event: ${event}`);
 
-      setSession(session);
-      setUser(session?.user || null);
+      if (isMounted) {
+        setSession(currentSession);
+        setUser(currentSession?.user || null);
 
-      if (session?.user) {
-        try {
+        if (currentSession?.user) {
           const adminStatus = await authService.isAdmin();
-          console.log("🔑 Admin status (state change):", adminStatus);
-          setIsAdmin(adminStatus);
-        } catch (error) {
-          console.error("❌ Admin check error (state change):", error);
-          setIsAdmin(false);
+          if (isMounted) setIsAdmin(adminStatus);
+        } else {
+          if (isMounted) setIsAdmin(false);
         }
-      } else {
-        setIsAdmin(false);
-      }
 
-      setLoading(false);
+        // Only set loading false if it was true (prevent unnecessary re-renders)
+        setLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
+      if (initializationTimeout.current)
+        clearTimeout(initializationTimeout.current);
     };
   }, []);
 
-  const signIn = async (email, password) => {
-    const { data, error } = await authService.signIn(email, password);
-    return { data, error };
-  };
-
-  const signUp = async (email, password, metadata) => {
-    const { data, error } = await authService.signUp(email, password, metadata);
-    return { data, error };
-  };
-
+  const signIn = async (email, password) =>
+    await authService.signIn(email, password);
   const signOut = async () => {
-    const { error } = await authService.signOut();
-    if (!error) {
-      setUser(null);
-      setSession(null);
-      setIsAdmin(false);
-    }
-    return { error };
+    const res = await authService.signOut();
+    setUser(null);
+    setSession(null);
+    setIsAdmin(false);
+    return res;
   };
 
-  return {
-    user,
-    session,
-    loading,
-    isAdmin,
-    signIn,
-    signUp,
-    signOut,
-  };
+  return { user, session, loading, isAdmin, signIn, signOut };
 };

@@ -64,9 +64,10 @@ export const DonationModal = ({ isOpen, onClose, onDonated }) => {
               {/* Donation Options */}
               <div className="space-y-3 mb-6">
                 <a
-                  href="https://www.buymeacoffee.com/yourusername"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                  }}
                   className="
                     block w-full bg-yellow-400 text-black font-bold py-3 px-6 rounded-lg
                     border-4 border-black

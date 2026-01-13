@@ -99,24 +99,36 @@ export const authService = {
    */
   async isAdmin() {
     try {
-      const { user, error } = await this.getCurrentUser();
-      if (error || !user) return false;
+      // Get session reliably - reading from local cache is instant
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
 
-      // Query the profiles table to check role
+      if (!user) {
+        console.log("👤 isAdmin check: No active session found");
+        return false;
+      }
+
+      console.log("🔍 isAdmin check: Verifying role for", user.email);
+
+      // Use maybeSingle to prevent PGRST116 (no rows) from throwing an error
       const { data, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        console.error("Profile query error:", profileError);
+        console.error("❌ Profile query error:", profileError);
         return false;
       }
 
-      return data?.role === "admin";
+      const isAdminStatus = data?.role === "admin";
+      console.log(`🔑 isAdmin result: ${isAdminStatus}`);
+      return isAdminStatus;
     } catch (error) {
-      console.error("Check admin error:", error);
+      console.error("❌ Check admin error:", error);
       return false;
     }
   },
