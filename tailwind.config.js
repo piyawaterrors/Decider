@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Kanit", "Inter", "system-ui", "sans-serif"],
       },
       boxShadow: {
         "neo-sm": "4px 4px 0px 0px rgba(0, 0, 0, 1)",

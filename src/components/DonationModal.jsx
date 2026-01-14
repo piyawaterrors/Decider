@@ -1,116 +1,229 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { donationService } from "../services/donationService";
 
 /**
  * DonationModal Component
- * Shows QR code for donations
+ * Redesigned for Automated Verification and Dynamic QR via Edge Function
  */
-export const DonationModal = ({ isOpen, onClose, onDonated }) => {
-  if (!isOpen) return null;
+export const DonationModal = ({
+  onClose,
+  onDonated,
+  settings = {},
+  showToast,
+}) => {
+  const [amount, setAmount] = useState(settings.min_donation_amount || 20);
+  const [qrUrl, setQrUrl] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (settings.promptpay_id) {
+      const cleanId = settings.promptpay_id.replace(/-/g, "");
+      setQrUrl(`https://promptpay2.me/${cleanId}/${amount}.png`);
+    }
+  }, [amount, settings.promptpay_id]);
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    setIsVerifying(true);
+    try {
+      // 1. Verify Slip with Supabase Edge Function
+      // (This handles: Slip2Go check, Receiver check, Amount check, and DB logging)
+      const result = await donationService.verifySlip(file);
+
+      if (!result.isValid) {
+        showToast("สลิปอะไรเนี่ย? ไปสแกนมาใหม่ไป๊! 🙄", "error");
+        return;
+      }
+
+      // 2. Success! Unlock Premium (Backend already handled DB insert)
+      // Clear localStorage persistence for lock
+      localStorage.setItem("decider_click_count", "0");
+      localStorage.setItem("decider_is_locked", "false");
+
+      showToast(
+        "ขอบคุณที่สนับสนุน! ปลดล็อกฟีเจอร์ Premium ให้แล้วครับ 🎉✨",
+        "success"
+      );
+      if (onDonated) onDonated();
+      onClose();
+    } catch (err) {
+      // Use the custom roast messages from the Edge Function if available
+      showToast(err.message || "เกิดข้อผิดพลาดในการตรวจสอบสลิป", "error");
+      console.error(err);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-          />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md"
+      />
 
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 50 }}
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          >
-            <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] rounded-lg p-8 max-w-md w-full">
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-2xl font-bold hover:text-red-500 transition-colors"
-              >
-                ✕
-              </button>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 30 }}
+        className="relative bg-[#0a0a15] border border-white/10 shadow-[0_40px_80px_rgba(0,0,0,0.9)] rounded-[3rem] p-8 sm:p-10 max-w-[400px] w-full overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-48 h-48 bg-[#CCFF00]/10 rounded-full blur-[70px] pointer-events-none"></div>
 
-              {/* Header */}
-              <div className="text-center mb-6">
-                <h2 className="text-3xl font-black mb-2">
-                  ☕ เลี้ยงกาแฟแอดมิน
-                </h2>
-                <p className="text-gray-600 font-semibold">
-                  ค่าที่ปรึกษาแพงนะ! เลี้ยงกาแฟหน่อย
-                </p>
-              </div>
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-white/20 hover:text-white hover:bg-white/10 rounded-2xl transition-all duration-300 z-10 border border-white/5"
+        >
+          <span>✕</span>
+        </button>
 
-              {/* QR Code Placeholder */}
-              <div className="bg-gray-200 border-4 border-black rounded-lg p-8 mb-6">
-                <div className="aspect-square bg-white border-2 border-dashed border-gray-400 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-4xl mb-2">📱</p>
-                    <p className="text-sm text-gray-500 font-semibold">
-                      QR Code PromptPay
-                    </p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      (ใส่ QR Code ของคุณที่นี่)
-                    </p>
-                  </div>
-                </div>
-              </div>
+        <div className="text-center mb-8 relative">
+          <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-2xl">
+            <span className="text-4xl">☕</span>
+          </div>
+          <h2 className="text-2xl font-medium mb-1 text-white tracking-tight">
+            ปลดล็อกฟีเจอร์ Premium
+          </h2>
+          <p className="text-white/40 text-sm">
+            {settings.donation_message ||
+              "สนับสนุนแอดมินเพื่อการใช้งานที่ไม่สะดุด"}
+          </p>
+        </div>
 
-              {/* Donation Options */}
-              <div className="space-y-3 mb-6">
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                  }}
-                  className="
-                    block w-full bg-yellow-400 text-black font-bold py-3 px-6 rounded-lg
-                    border-4 border-black
-                    shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
-                    hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]
-                    transition-all duration-200
-                    text-center
-                  "
-                >
-                  ☕ Buy Me a Coffee
-                </a>
-              </div>
-
-              {/* Thank You Message */}
-              <div className="bg-pink-200 border-4 border-black rounded-lg p-4">
-                <p className="text-sm font-bold text-center">
-                  🙏 ขอบคุณที่ใช้บริการ! <br />
-                  ถ้าชอบก็อย่าลืมบอกต่อเพื่อนด้วยนะ
-                </p>
-              </div>
-
-              {/* Unlock Button (if locked) */}
-              {onDonated && (
+        {/* Amount Selection */}
+        <div className="mb-8">
+          <label className="block text-white/30 text-[10px] font-medium uppercase tracking-[0.2em] mb-3 ml-1">
+            กรุณาระบุจำนวนเงิน
+          </label>
+          <div className="flex items-center gap-3">
+            {[
+              settings.min_donation_amount || 20,
+              (settings.min_donation_amount || 20) * 2.5,
+              (settings.min_donation_amount || 20) * 5,
+            ].map((val) => {
+              const roundedVal = Math.round(val);
+              return (
                 <button
-                  onClick={() => {
-                    onDonated();
-                    onClose();
-                  }}
-                  className="
-                    w-full mt-4 bg-green-500 text-white font-bold py-3 px-6 rounded-lg
-                    border-4 border-black
-                    shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
-                    hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]
-                    transition-all duration-200
-                  "
+                  key={roundedVal}
+                  onClick={() => setAmount(roundedVal)}
+                  className={`flex-1 py-3 rounded-2xl font-medium transition-all ${
+                    amount === roundedVal
+                      ? "bg-[#CCFF00] text-black shadow-lg shadow-[#CCFF00]/20"
+                      : "bg-white/5 text-white/40 hover:bg-white/10"
+                  }`}
                 >
-                  ✅ โอนแล้ว ปลดล็อก!
+                  {roundedVal}.-
                 </button>
+              );
+            })}
+            <div className="flex-[1.5] relative">
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 focus:border-[#CCFF00] outline-none text-center font-medium"
+                placeholder="ระบุเอง"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* QR Code and Upload Section */}
+        <div className="space-y-6">
+          <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 text-center group">
+            <div className="bg-white rounded-[2rem] p-5 inline-block mb-4 shadow-2xl relative">
+              {qrUrl ? (
+                <img
+                  src={qrUrl}
+                  alt="PromptPay QR"
+                  className="w-[180px] h-[180px] object-contain"
+                />
+              ) : (
+                <div className="w-[180px] h-[180px] flex items-center justify-center text-black/20 font-medium">
+                  No ID
+                </div>
               )}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+            <div className="flex items-center justify-center gap-2 text-[#CCFF00] text-xs font-medium uppercase tracking-widest opacity-60">
+              <span className="w-1.5 h-1.5 bg-[#CCFF00] rounded-full animate-pulse"></span>
+              PromptPay QR
+            </div>
+          </div>
+
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => !isVerifying && fileInputRef.current?.click()}
+            className={`
+              relative border-2 border-dashed rounded-[2.5rem] p-8 text-center transition-all cursor-pointer
+              ${
+                dragActive
+                  ? "border-[#CCFF00] bg-[#CCFF00]/5"
+                  : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20"
+              }
+              ${isVerifying ? "opacity-50 pointer-events-none cursor-wait" : ""}
+            `}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e.target.files?.[0])}
+            />
+            {isVerifying ? (
+              <div className="flex flex-col items-center gap-4 py-2">
+                <div className="w-10 h-10 border-4 border-[#CCFF00]/20 border-t-[#CCFF00] rounded-full animate-spin"></div>
+                <p className="text-[#CCFF00] font-medium text-sm animate-pulse">
+                  กำลังตรวจสอบสลิป...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="text-3xl mb-3 opacity-30">📤</div>
+                <p className="text-white font-medium text-sm mb-1">
+                  อัปโหลดสลิปเพื่อยืนยัน
+                </p>
+                <p className="text-white/20 text-[10px] uppercase tracking-widest">
+                  Click or Drag & Drop
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        <p className="text-center mt-8 text-white/10 text-[9px] font-medium uppercase tracking-[0.3em]">
+          Powered by Slip2Go Secure Verification
+        </p>
+      </motion.div>
+    </div>
   );
 };

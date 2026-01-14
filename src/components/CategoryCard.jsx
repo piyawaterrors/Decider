@@ -1,37 +1,50 @@
 import { motion } from "framer-motion";
-import { getEmojiFromIcon, getColorFromIcon } from "../data/categories";
+import { getEmojiFromIcon } from "../data/categories";
 
 /**
  * CategoryCard Component
- * Displays a category card with neo-brutalism style
- * Schema: title, icon_name (แปลงเป็น emoji และ color)
+ * Modern Glassmorphism style for category selection
  */
 export const CategoryCard = ({ category, onClick }) => {
   const emoji = getEmojiFromIcon(category.icon_name);
-  const color = getColorFromIcon(category.icon_name);
 
   return (
     <motion.div
       whileHover={{ scale: 1.05, y: -5 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className={`
+      className="
         relative cursor-pointer
-        ${color}
-        border-4 border-black
-        shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
-        hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]
-        transition-all duration-200
-        p-6 rounded-lg
-      `}
+        bg-black/40 backdrop-blur-xl
+        border-2 border-white/30
+        hover:border-[#CCFF00]
+        shadow-[0_10px_30px_rgba(0,0,0,0.5)]
+        hover:shadow-[#CCFF00]/20
+        transition-all duration-300
+        p-8 rounded-[2rem]
+        flex flex-col items-center justify-center
+        group overflow-hidden
+      "
     >
-      <div className="text-6xl mb-4 text-center">{emoji}</div>
-      <h3 className="text-2xl font-bold text-white text-center mb-2">
+      {/* Background Glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+      <div className="text-7xl mb-6 relative z-10 filter drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-300">
+        {emoji}
+      </div>
+
+      <h3 className="text-2xl sm:text-3xl font-medium text-white text-center mb-2 relative z-10 tracking-tight">
         {category.title}
       </h3>
-      <p className="text-white/90 text-center text-sm">
-        {category.description}
-      </p>
+
+      {category.description && (
+        <p className="text-white/60 text-center text-sm font-normal relative z-10 px-2 line-clamp-2">
+          {category.description}
+        </p>
+      )}
+
+      {/* Decorative dot */}
+      <div className="absolute bottom-4 right-4 w-2 h-2 bg-white/30 rounded-full" />
     </motion.div>
   );
 };

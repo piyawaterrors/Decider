@@ -168,11 +168,29 @@ export const insultMessages = [
 
 // Helper: แปลง icon_name เป็น emoji สำหรับแสดงผล
 export const getEmojiFromIcon = (iconName) => {
+  if (!iconName) return "🎲";
+
+  // ถ้าเป็น emoji อยู่แล้ว (ตรวจจับง่ายๆ คือไม่ใช่ตัวอักษร A-Z)
+  if (!/^[a-zA-Z0-9\s_-]+$/.test(iconName)) {
+    return iconName;
+  }
+
   const iconMap = {
     Utensils: "🍜",
     Briefcase: "🤒",
     Heart: "💭",
     Activity: "🏃",
+    Food: "🍔",
+    Drink: "☕",
+    Travel: "✈️",
+    Work: "💻",
+    Love: "❤️",
+    Health: "🏥",
+    Game: "🎮",
+    Movie: "🎬",
+    Music: "🎵",
+    Shopping: "🛍️",
+    Money: "💰",
   };
   return iconMap[iconName] || "🎲";
 };

@@ -46,3 +46,13 @@ create table public.donations (
   status text default 'pending', -- 'completed', 'failed'
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- 6. ตาราง settings สำหรับเก็บการตั้งค่าระบบ
+CREATE TABLE IF NOT EXISTS public.settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key TEXT UNIQUE NOT NULL,
+  value JSONB NOT NULL,
+  description TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by UUID REFERENCES auth.users(id)
+);

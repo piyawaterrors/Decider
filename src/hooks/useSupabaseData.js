@@ -20,7 +20,6 @@ export const useSupabaseData = (
 
   const fetchData = async () => {
     try {
-      console.log("🔄 Fetching data...");
       setLoading(true);
       setError(null);
 
@@ -32,14 +31,11 @@ export const useSupabaseData = (
       // Race between fetch and timeout
       const result = await Promise.race([fetchFunction(), timeoutPromise]);
 
-      console.log("📊 Fetch result:", result);
-
       if (result.error) {
         console.error("❌ Fetch error:", result.error);
         setError(result.error);
         setData(null);
       } else {
-        console.log("✅ Data fetched:", result.data?.length || 0, "items");
         setData(result.data);
         setError(null);
       }
@@ -66,10 +62,11 @@ export const useSupabaseData = (
 };
 
 /**
- * Custom hook for fetching categories with 10s timeout
+ * Custom hook for fetching categories with 30s timeout
+ * Increased timeout to handle slow connections
  */
 export const useCategories = () => {
-  return useSupabaseData(() => dbService.getCategories(), [], 10000);
+  return useSupabaseData(() => dbService.getCategories(), [], 30000);
 };
 
 /**
@@ -88,6 +85,13 @@ export const useDecisions = (categoryId) => {
  */
 export const useSettings = () => {
   return useSupabaseData(() => settingsService.getAllSettings(), []);
+};
+
+/**
+ * Custom hook for fetching all decisions (preload)
+ */
+export const useAllDecisions = () => {
+  return useSupabaseData(() => dbService.getAllDecisions(), [], 30000);
 };
 
 /**

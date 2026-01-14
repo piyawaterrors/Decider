@@ -1,56 +1,58 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { LoadingView } from "./LoadingView";
+import { motion } from "framer-motion";
 
 /**
  * AdminRoute Component
- * Reliable version for protecting admin routes
+ * Reliable version for protecting admin routes with proper F5 handling
  */
 export const AdminRoute = ({ children }) => {
   const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
 
-  console.log("🛠️ AdminRoute State:", { loading, user: !!user, isAdmin });
-
-  // 1. ถ้ากำลังโหลดข้อมูล (Refresh ใหม่ๆ)
+  // 1. ถ้ากำลังโหลดข้อมูล (Refresh ใหม่ๆ) - รอให้โหลดเสร็จก่อน
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-400 to-pink-400">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
-          <p className="text-white font-bold text-xl">
-            กำลังตรวจสอบสิทธิ์ Admin...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingView message="กำลังตรวจสอบสิทธิ์..." fullScreen />;
   }
 
   // 2. ถ้าโหลดเสร็จแล้วแต่ไม่มี User
   if (!user) {
-    console.warn("🚫 No user found, redirecting to login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // 3. ถ้ามี User แต่ไม่ใช่ Admin
   if (!isAdmin) {
-    console.error("🚫 Access denied: Not an admin");
     return (
-      <div className="flex items-center justify-center min-h-screen bg-red-100 p-4">
-        <div className="bg-white border-4 border-black p-8 rounded-lg max-w-md text-center">
-          <h2 className="text-2xl font-black mb-4">🚫 ไม่มีสิทธิ์เข้าถึง</h2>
-          <p className="mb-6">บัญชีของคุณไม่มีสิทธิ์ระดับ Admin</p>
+      <div className="flex items-center justify-center min-h-screen bg-[#050510] text-white p-4">
+        {/* Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-lg aspect-square bg-red-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 p-10 rounded-[2.5rem] max-w-md text-center shadow-2xl relative z-10"
+        >
+          <div className="text-6xl mb-6">🚫</div>
+          <h2 className="text-2xl font-medium mb-3 tracking-tight">
+            ไม่มีสิทธิ์เข้าถึง
+          </h2>
+          <p className="text-white/40 mb-8 leading-relaxed">
+            บัญชีของคุณไม่มีสิทธิ์ระดับ Admin <br />
+            เฉพาะ "สมองตัวจริง" เท่านั้นที่เข้าได้
+          </p>
           <button
             onClick={() => (window.location.href = "/")}
-            className="bg-black text-white px-6 py-2 rounded-lg font-bold"
+            className="w-full bg-[#CCFF00] text-black py-4 rounded-2xl font-medium hover:scale-105 transition-all shadow-lg"
           >
             กลับหน้าหลัก
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
-  // 4. ผ่านฉลุย
+  // 4. ผ่านฉลุย - เป็น Admin
   return children;
 };
 

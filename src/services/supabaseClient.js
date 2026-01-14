@@ -15,5 +15,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: "sb-auth-token",
+    flowType: "pkce",
+  },
+  global: {
+    headers: {
+      "x-client-info": "decider-app",
+    },
+  },
+  db: {
+    schema: "public",
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
   },
 });

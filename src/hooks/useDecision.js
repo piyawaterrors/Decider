@@ -6,7 +6,9 @@ import { useState, useCallback, useEffect } from "react";
  * @param {Object} config - Configuration options
  * @param {boolean} config.isDonationEnabled - Whether the donation lock logic should be active
  */
-export const useDecision = (config = { isDonationEnabled: true }) => {
+export const useDecision = (
+  config = { isDonationEnabled: true, randomLimit: 5 }
+) => {
   // Initialize state from localStorage if available
   const [clickCount, setClickCount] = useState(() => {
     const saved = localStorage.getItem("decider_click_count");
@@ -20,6 +22,10 @@ export const useDecision = (config = { isDonationEnabled: true }) => {
 
   const [currentDecision, setCurrentDecision] = useState(null);
   const [contextMessage, setContextMessage] = useState("");
+  const [lastClickTime, setLastClickTime] = useState(0);
+
+  const limit = parseInt(config.randomLimit, 10) || 5;
+  const COOLDOWN_MS = 1500; // 1.5 seconds cooldown
 
   // Persist state to localStorage whenever it changes
   useEffect(() => {
@@ -52,37 +58,11 @@ export const useDecision = (config = { isDonationEnabled: true }) => {
   };
 
   /**
-   * Get weather context
+   * Get weather context (DISABLED for performance)
    */
   const getWeatherContext = async () => {
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
-
-      const { latitude, longitude } = position.coords;
-      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
-
-      if (!apiKey) return { isRaining: false, message: "" };
-
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}`
-      );
-
-      const data = await response.json();
-      const weather = data.weather[0].main.toLowerCase();
-
-      if (weather.includes("rain") || weather.includes("drizzle")) {
-        return {
-          isRaining: true,
-          message: "ฝนตกนะ! คิดให้ดีก่อนออกไปข้างนอก ☔",
-        };
-      }
-
-      return { isRaining: false, message: "" };
-    } catch (error) {
-      return { isRaining: false, message: "" };
-    }
+    // Weather API disabled - return immediately
+    return { isRaining: false, message: "" };
   };
 
   /**
@@ -90,15 +70,31 @@ export const useDecision = (config = { isDonationEnabled: true }) => {
    */
   const makeDecision = useCallback(
     async (decisions, category) => {
+      // Validate decisions array
+      if (!decisions || !Array.isArray(decisions) || decisions.length === 0) {
+        setContextMessage("ไม่มีตัวเลือกในหมวดหมู่นี้");
+        return null;
+      }
+
+      // Step 0: Rate Limiting
+      const now = Date.now();
+      if (now - lastClickTime < COOLDOWN_MS) {
+        return {
+          error: "too_fast",
+          message: "ใจเย็นๆ... สุ่มเร็วไปแล้วลูกพี่! ✋🛑",
+        };
+      }
+      setLastClickTime(now);
+
       // Step 1: Increment Count (Always count, regardless of donation setting)
       const newClickCount = clickCount + 1;
       setClickCount(newClickCount);
 
       // Step 2: Check Lock (Only lock if donation is enabled)
-      if (config.isDonationEnabled && newClickCount > 5) {
+      if (config.isDonationEnabled && newClickCount > limit) {
         setIsLocked(true);
         setContextMessage(
-          "🔒 กดมากไปแล้ว! ไม่มีความมั่นใจในตัวเองเลยเหรอ? เลี้ยงกาแฟแอดมินก่อนค่อยปลดล็อก 😏"
+          `🔒 กดมากไปแล้ว! (ครบ ${limit} ครั้ง) เลี้ยงกาแฟแอดมินก่อนค่อยปลดล็อก 😏`
         );
         return null;
       }
@@ -106,8 +102,20 @@ export const useDecision = (config = { isDonationEnabled: true }) => {
       // Step 3: Normal Flow
       const timeContext = getTimeContext();
       const weatherContext = await getWeatherContext();
-      const randomDecision =
-        decisions[Math.floor(Math.random() * decisions.length)];
+      const randomIndex = Math.floor(Math.random() * decisions.length);
+      const randomDecision = decisions[randomIndex];
+
+      // Validate randomDecision
+      if (!randomDecision) {
+        setContextMessage("เกิดข้อผิดพลาดในการสุ่ม กรุณาลองใหม่อีกครั้ง");
+        return null;
+      }
+
+      // Validate required fields
+      if (!randomDecision.content) {
+        setContextMessage("ข้อมูลไม่สมบูรณ์ กรุณาตรวจสอบข้อมูลในระบบ");
+        return null;
+      }
 
       let contextMsg = "";
       if (timeContext.message) contextMsg += timeContext.message + " ";
@@ -125,7 +133,7 @@ export const useDecision = (config = { isDonationEnabled: true }) => {
         },
       };
     },
-    [clickCount, config.isDonationEnabled]
+    [clickCount, config.isDonationEnabled, limit, lastClickTime]
   );
 
   /**

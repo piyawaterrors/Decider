@@ -18,22 +18,16 @@ export const dbService = {
           "Supabase client is not initialized. Please check your .env variables."
         );
       }
-
-      console.log("🔍 Fetching categories from Supabase...");
-
       const { data, error } = await supabase
         .from("categories")
         .select("*")
         .order("created_at", { ascending: true });
-
-      console.log("📊 Supabase Response:", { data, error });
 
       if (error) {
         console.error("❌ Supabase Error:", error);
         throw error;
       }
 
-      console.log("✅ Categories fetched:", data?.length || 0, "items");
       return { data, error: null };
     } catch (error) {
       console.error("❌ Get categories error:", error);
@@ -61,13 +55,15 @@ export const dbService = {
   },
 
   /**
-   * Get all decisions
+   * Get all decisions (for preloading)
    */
   async getAllDecisions() {
     try {
       const { data, error } = await supabase
         .from("decisions_pool")
-        .select("*, categories(*)");
+        .select("*")
+        .eq("is_active", true)
+        .order("category_id", { ascending: true });
 
       if (error) throw error;
       return { data, error: null };
@@ -94,6 +90,31 @@ export const dbService = {
       return { data, error: null };
     } catch (error) {
       console.error("Log usage error:", error);
+      return { data: null, error };
+    }
+  },
+
+  /**
+   * Get usage stats (Admin only)
+   */
+  async getUsageStats() {
+    try {
+      const { data, error } = await supabase
+        .from("usage_logs")
+        .select(
+          `
+          id,
+          created_at,
+          category_id,
+          categories(title)
+        `
+        )
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error("Get usage stats error:", error);
       return { data: null, error };
     }
   },
@@ -202,6 +223,32 @@ export const dbService = {
     } catch (error) {
       console.error("Delete decision error:", error);
       return { error };
+    }
+  },
+
+  /**
+   * Log successful donation
+   */
+  async logDonation(donationData) {
+    try {
+      const { data, error } = await supabase
+        .from("donations")
+        .insert([
+          {
+            trans_ref: donationData.trans_ref,
+            amount: donationData.amount,
+            sender_name: donationData.sender_name,
+            receiver_account: donationData.receiver_account,
+            raw_data: donationData.raw_data,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error("Log donation error:", error);
+      return { data: null, error };
     }
   },
 

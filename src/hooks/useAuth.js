@@ -17,42 +17,47 @@ export const useAuth = () => {
 
     const checkInitialAuth = async () => {
       try {
-        console.log("🔐 Checking Initial Auth...");
+        // Get session from Supabase (it handles persistence automatically)
+        const { session, user } = await authService.verifyTokenWithAPI();
 
-        // 1. Get session immediately from storage
-        const { session: currentSession } = await authService.getSession();
+        if (!isMounted) return;
 
-        if (isMounted) {
-          setSession(currentSession);
-          setUser(currentSession?.user || null);
+        setSession(session);
+        setUser(user);
 
-          if (currentSession?.user) {
-            console.log("👤 User found, verifying admin role...");
-            const adminStatus = await authService.isAdmin();
-            if (isMounted) setIsAdmin(adminStatus);
+        if (session && user) {
+          // Check admin status
+          const adminStatus = await authService.isAdmin();
+
+          if (isMounted) {
+            setIsAdmin(adminStatus);
           }
+        } else {
+          setIsAdmin(false);
         }
       } catch (error) {
-        console.error("❌ Auth Init Error:", error);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+        }
       } finally {
         if (isMounted) {
-          console.log("✅ Auth Loading Finished");
           setLoading(false);
-          if (initializationTimeout.current)
+          if (initializationTimeout.current) {
             clearTimeout(initializationTimeout.current);
+          }
         }
       }
     };
 
-    // Safety fallback: If it takes more than 7 seconds, stop loading anyway
+    // Safety fallback: If it takes more than 5 seconds, stop loading anyway
     initializationTimeout.current = setTimeout(() => {
-      if (loading && isMounted) {
-        console.warn(
-          "⚠️ Auth initialization taking too long, forcing load complete"
-        );
+      if (isMounted) {
+        console.warn("Auth initialization timeout");
         setLoading(false);
       }
-    }, 7000);
+    }, 5000);
 
     checkInitialAuth();
 
@@ -60,8 +65,6 @@ export const useAuth = () => {
     const {
       data: { subscription },
     } = authService.onAuthStateChange(async (event, currentSession) => {
-      console.log(`🔄 Auth Event: ${event}`);
-
       if (isMounted) {
         setSession(currentSession);
         setUser(currentSession?.user || null);
@@ -69,12 +72,20 @@ export const useAuth = () => {
         if (currentSession?.user) {
           const adminStatus = await authService.isAdmin();
           if (isMounted) setIsAdmin(adminStatus);
+
+          // Store token for all logged-in users
+          if (currentSession.access_token) {
+            authService.setAdminToken(currentSession.access_token);
+          }
         } else {
           if (isMounted) setIsAdmin(false);
+          authService.clearAdminToken();
         }
 
         // Only set loading false if it was true (prevent unnecessary re-renders)
-        setLoading(false);
+        if (loading) {
+          setLoading(false);
+        }
       }
     });
 
