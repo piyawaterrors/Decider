@@ -48,11 +48,8 @@ export const HomePage = () => {
   const donationMsgSetting = allSettings?.find(
     (s) => s.key === "donation_message"
   );
-  const promptPaySetting = allSettings?.find((s) => s.key === "promptpay_id");
-  const slip2goSetting = allSettings?.find((s) => s.key === "slip2go_api_key");
-  const minAmountSetting = allSettings?.find(
-    (s) => s.key === "min_donation_amount"
-  );
+  const promptPaySetting = allSettings?.find((s) => s.key === "promtpay");
+  const minAmountSetting = allSettings?.find((s) => s.key === "min_donation");
   const randomLimitSetting = allSettings?.find((s) => s.key === "random_limit");
 
   const isDonationEnabled = donationEnabledSetting
@@ -66,9 +63,8 @@ export const HomePage = () => {
   const donationSettings = {
     isDonationEnabled,
     randomLimit,
-    promptpay_id: promptPaySetting?.value,
-    slip2go_api_key: slip2goSetting?.value,
-    min_donation_amount: minAmountSetting?.value,
+    promtpay: promptPaySetting?.value,
+    min_donation: minAmountSetting?.value,
     donation_message: donationMsgSetting?.value,
   };
 

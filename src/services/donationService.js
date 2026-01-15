@@ -21,10 +21,16 @@ export const donationService = {
   /**
    * Verify slip using Supabase Edge Function
    * @param {File} file - The slip image file
+   * @param {number} amount - The expected donation amount
+   * @param {Object} extraInfo - Additional info (display_name, message)
    */
-  async verifySlip(file) {
+  async verifySlip(file, amount, extraInfo = {}) {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("amount", amount);
+    if (extraInfo.display_name)
+      formData.append("display_name", extraInfo.display_name);
+    if (extraInfo.message) formData.append("message", extraInfo.message);
 
     try {
       const { data, error } = await supabase.functions.invoke("verify-slip", {
@@ -32,15 +38,23 @@ export const donationService = {
       });
 
       if (error) {
-        // If error has a message from our Edge Function
-        let msg = error.message;
+        // Try to get a more specific message if possible
+        let errorMsg = "การตรวจสอบผิดพลาด";
+
+        // Check if the error is from the function return
+        if (error instanceof Error) {
+          errorMsg = error.message;
+        }
+
+        // Supabase invoke errors sometimes hide the real response in context
         try {
           const body = await error.context?.json();
-          if (body?.message) msg = body.message;
+          if (body?.message) errorMsg = body.message;
         } catch (e) {
-          /* ignore */
+          console.warn("Could not parse error context JSON", e);
         }
-        throw new Error(msg || "การตรวจสอบผิดพลาด");
+
+        throw new Error(errorMsg);
       }
 
       return {

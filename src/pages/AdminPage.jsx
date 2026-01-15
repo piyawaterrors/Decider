@@ -930,6 +930,8 @@ const SettingsTab = ({ showToast }) => {
         "buy_me_coffee_url",
         "donation_qr_code",
         "donation_message",
+        "min_donation",
+        "promtpay",
         "random_limit",
       ];
       keys.forEach((key) => {
@@ -1021,49 +1023,70 @@ const SettingsTab = ({ showToast }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-white/60 text-xs font-medium uppercase tracking-wider mb-2 ml-1">
-                PromptPay ID (เบอร์โทร/เลขบัตร)
+                พร้อมเพย์ (PromptPay)
               </label>
               <input
                 type="text"
-                value={settings.promptpay_id || ""}
+                value={settings.promtpay || ""}
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    promptpay_id: e.target.value,
+                    promtpay: e.target.value,
                   })
                 }
                 className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 px-5 focus:border-[#CCFF00] outline-none transition-all placeholder:text-white/10"
-                placeholder="081-XXX-XXXX"
+                placeholder="081-XXX-XXXX หรือเลขบัตรประชาชน"
               />
             </div>
             <div>
               <label className="block text-white/60 text-xs font-medium uppercase tracking-wider mb-2 ml-1">
-                Slip2Go API Key
-              </label>
-              <input
-                type="password"
-                value={settings.slip2go_api_key || ""}
-                onChange={(e) =>
-                  setSettings({ ...settings, slip2go_api_key: e.target.value })
-                }
-                className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 px-5 focus:border-[#CCFF00] outline-none transition-all placeholder:text-white/10"
-                placeholder="s2g_..."
-              />
-            </div>
-            <div>
-              <label className="block text-white/60 text-xs font-medium uppercase tracking-wider mb-2 ml-1">
-                ยอดโอนขั้นต่ำในการปลดล็อก (บาท)
+                ค่ากาแฟเริ่มต้น (บาท)
               </label>
               <input
                 type="number"
-                value={settings.min_donation_amount || 20}
+                value={settings.min_donation}
+                min={1}
                 onChange={(e) =>
                   setSettings({
                     ...settings,
-                    min_donation_amount: parseInt(e.target.value, 10),
+                    min_donation: parseInt(e.target.value, 10),
                   })
                 }
                 className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 px-5 focus:border-[#CCFF00] outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-white/60 text-xs font-medium uppercase tracking-wider mb-2 ml-1">
+                Buy Me a Coffee URL
+              </label>
+              <input
+                type="url"
+                value={settings.buy_me_coffee_url || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    buy_me_coffee_url: e.target.value,
+                  })
+                }
+                className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 px-5 focus:border-[#CCFF00] outline-none transition-all placeholder:text-white/10"
+                placeholder="https://buymeacoffee.com/yourusername"
+              />
+            </div>
+            <div>
+              <label className="block text-white/60 text-xs font-medium uppercase tracking-wider mb-2 ml-1">
+                QR Code URL
+              </label>
+              <input
+                type="url"
+                value={settings.donation_qr_code || ""}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    donation_qr_code: e.target.value,
+                  })
+                }
+                className="w-full bg-white/[0.05] border border-white/10 rounded-2xl py-3 px-5 focus:border-[#CCFF00] outline-none transition-all placeholder:text-white/10"
+                placeholder="https://example.com/qr-code.png"
               />
             </div>
           </div>
