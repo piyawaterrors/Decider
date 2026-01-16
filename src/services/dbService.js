@@ -56,19 +56,36 @@ export const dbService = {
 
   /**
    * Get all decisions (for preloading)
+   * Uses pagination to fetch all records in batches of 1000
    */
   async getAllDecisions() {
     try {
-      const { data, error } = await supabase
-        .from("decisions_pool")
-        .select("*")
-        .eq("is_active", true)
-        .order("category_id", { ascending: true });
+      let allData = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      return { data, error: null };
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("decisions_pool")
+          .select("*")
+          .eq("is_active", true)
+          .order("category_id", { ascending: true })
+          .range(from, from + batchSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += batchSize;
+          hasMore = data.length === batchSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      return { data: allData, error: null };
     } catch (error) {
-      console.error("Get all decisions error:", error);
+      console.error("❌ Get all decisions error:", error);
       return { data: null, error };
     }
   },
